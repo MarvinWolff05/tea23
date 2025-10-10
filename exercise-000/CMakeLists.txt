@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.10.2)
 
 # Set the project name to your project name, template isn't very descriptive
-project (exercise-000 VERSION 0.0.1 LANGUAGES CXX)
+project (exercise-000 VERSION 0.0.2 LANGUAGES CXX)
 string(TIMESTAMP BUILD_DATE "%Y-%m-%dT%H:%M:%S")
 
 # specify the C++ standard
