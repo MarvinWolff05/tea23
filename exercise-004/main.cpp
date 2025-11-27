@@ -1,35 +1,56 @@
-#include <fmt/chrono.h>
-#include <fmt/format.h>
+#include <fmt/core.h>
 
-#include "CLI/CLI.hpp"
-#include "config.h"
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
-auto main(int argc, char **argv) -> int
+// Header wird von CMake generiert.
+// Enthält:
+//   const unsigned char image[];
+//   const unsigned int  image_width;
+//   const unsigned int  image_height;
+#include "embedded_image.h"
+
+int main()
 {
-    /**
-     * CLI11 is a command line parser to add command line options
-     * More info at https://github.com/CLIUtils/CLI11#usage
-     */
-    CLI::App app{PROJECT_NAME};
-    try
-    {
-        app.set_version_flag("-V,--version", fmt::format("{} {}", PROJECT_VER, PROJECT_BUILD_DATE));
-        app.parse(argc, argv);
+    // 1. Größe des Arrays bestimmen
+    // Wir wissen: 3 Kanäle (RGB), also:
+    const std::size_t pixel_count = static_cast<std::size_t>(image_width) *
+                                    static_cast<std::size_t>(image_height);
+    const std::size_t expected_size = pixel_count * 3; // RGB
+
+    fmt::print("Embedded RGB image: {}x{} pixels\n", image_width, image_height);
+    fmt::print("Expected data size (width*height*3): {} bytes\n", expected_size);
+
+    // Das Array hat exakt diese Größe (weil du img.tobytes() benutzt hast)
+    // wir können aber nicht sizeof(image) in diesem File bestimmen,
+    // weil 'image' hier ein externes Symbol aus dem Header ist (kein static array).
+    // -> Wir vertrauen auf den Generator.
+
+    // 2. cv::Mat aus den rohen RGB-Daten bauen
+    // OpenCV erwartet BGR, aber für reine Parameterabfrage ist das egal.
+    cv::Mat img(
+        static_cast<int>(image_height),
+        static_cast<int>(image_width),
+        CV_8UC3,
+        const_cast<unsigned char*>(image) // Daten werden nicht verändert
+    );
+
+    if (img.empty()) {
+        fmt::print("Error: constructed cv::Mat is empty.\n");
+        return 1;
     }
-    catch (const CLI::ParseError &e)
-    {
-        return app.exit(e);
-    }
 
-    /**
-     * The {fmt} lib is a cross platform library for printing and formatting text
-     * it is much more convenient than std::cout and printf
-     * More info at https://fmt.dev/latest/api.html
-     */
-    fmt::print("Hello, {}!\n", app.get_name());
+    fmt::print("cv::Mat info:\n");
+    fmt::print("  rows     = {}\n", img.rows);
+    fmt::print("  cols     = {}\n", img.cols);
+    fmt::print("  channels = {}\n", img.channels());
+    fmt::print("  type     = {}\n", img.type());
 
-    /* INSERT YOUR CODE HERE */
+    // Wenn du sicher sein willst, dass niemand die eingebetteten Daten verändert:
+    cv::Mat img_copy = img.clone();
+    fmt::print("Cloned image size: {} x {}, channels: {}\n",
+               img_copy.cols, img_copy.rows, img_copy.channels());
 
-
-    return 0; /* exit gracefully*/
+    return 0;
 }
